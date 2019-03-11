@@ -1,4 +1,8 @@
-const Post = ({title, summary, author, date, uid}) => (
+import Prismic from 'prismic-javascript';
+import { RichText } from 'prismic-reactjs';
+import { getApi } from '../config/prismicConfig.js';
+
+const Post = ({title, summary, author, published_at, uid}) => (
   <React.Fragment>
     <div class="post-preview">
       <a href={`/blog-post?id=${uid}`}>
@@ -11,23 +15,23 @@ const Post = ({title, summary, author, date, uid}) => (
       </a>
       <p class="post-meta">Posted by&nbsp;
         <a>{author}</a>
-        &nbsp;on {date} </p>
+        &nbsp;on {published_at} </p>
     </div>
     <hr/>
   </React.Fragment>
 );
 
-const Blog = () => (
+const Blog = ({blogPage, posts}) => (
   <React.Fragment>
 
-    <header class="masthead" style={{backgroundImage: "url(/static/img/home-bg.jpg)"}}>
+    <header class="masthead" style={{backgroundImage: `url(${blogPage['background-image'].url})`}}>
       <div class="overlay"></div>
       <div class="container">
         <div class="row">
           <div class="col-lg-8 col-md-10 mx-auto">
             <div class="site-heading">
-              <h1>Clean Blog</h1>
-              <span class="subheading">A Blog Theme by Start Bootstrap</span>
+              <h1>{blogPage.title}</h1>
+              <span class="subheading">{blogPage.subtitle}</span>
             </div>
           </div>
         </div>
@@ -37,14 +41,36 @@ const Blog = () => (
     <div class="container">
       <div class="row">
         <div class="col-lg-8 col-md-10 mx-auto">
-          <Post author="bill" title="summary" date="Jan 8, 2019" summary="It was a good night learning about headless CMS's" uid="bla"/>
+          { posts.map( ({data: post, uid}) => (
+            <Post {...post} uid={uid} />
+          ))}
+
+          {/* TODO get this working...
           <div class="clearfix">
             <a class="btn btn-primary float-right" href="#">Older Posts &rarr;</a>
           </div>
+          */}
         </div>
       </div>
     </div>
   </React.Fragment>
 );
+
+Blog.getInitialProps = () => {
+  return getApi().then( api => {
+    return Promise.all([
+      api.getSingle('blog_page'),
+      api.query(
+        Prismic.Predicates.at('document.type', 'blog_post'),
+        { orderings : '[my.blog_post.publishedAt]' }
+      )
+    ]);
+  }).then( ([{data: blogPage}, {results: posts}]) => {
+    return {
+      blogPage,
+      posts
+    };
+  });
+};
 
 export default Blog;
